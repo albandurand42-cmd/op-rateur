@@ -30,12 +30,13 @@
     <div id="auth-forms">
       <label for="email">Adresse e‑mail (magic link)</label>
       <input id="email" type="text" placeholder="ton@mail.com" />
-      <button id="send-link">Se connecter (magic link)</button>
+      <button id="send-link" type="button">Se connecter (magic link)</button>
       <div class="small">Le lien de connexion est envoyé à l'adresse e‑mail. Utilise le même e‑mail pour tous les admins.</div>
+      <div id="auth-result" class="small" aria-live="polite"></div>
     </div>
     <div id="signout" style="display:none;">
       <div class="small">Connecté en <span id="user-email"></span></div>
-      <button id="logout" class="btn-muted">Se déconnecter</button>
+      <button id="logout" class="btn-muted" type="button">Se déconnecter</button>
     </div>
   </div>
 
@@ -54,7 +55,7 @@
       <option value="0">Permanent</option>
     </select>
 
-    <button id="send">ENVOYER À MAMIE</button>
+    <button id="send" type="button">ENVOYER À MAMIE</button>
     <div id="send-result" class="small" aria-live="polite"></div>
   </div>
 
