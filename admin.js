@@ -71,9 +71,28 @@ sendLinkBtn.addEventListener('click', async () => {
   sendLinkBtn.disabled = true;
   if(authResult) authResult.textContent = 'Envoi du lien...';
 
-  try {
-    const { data, error } = await supabaseClient.auth.signInWithOtp({ email });
-    sendLinkBtn.disabled = false;
+   try {
+  const { data, error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: 'https://albandurand42-cmd.github.io/op-rateur/admin.html'
+    }
+  });
+
+  sendLinkBtn.disabled = false;
+
+  if (error) {
+    if(authResult) authResult.textContent = 'Erreur : ' + (error.message || String(error));
+    return;
+  }
+
+  if(authResult) authResult.textContent = 'Lien de connexion envoyé par e-mail ✓';
+
+} catch (err) {
+  console.error('sendLink error', err);
+  sendLinkBtn.disabled = false;
+  if(authResult) authResult.textContent = 'Erreur réseau — réessaie.';
+}
 
     if (error) {
       // show clear Supabase error
