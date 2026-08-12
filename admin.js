@@ -1,11 +1,14 @@
 // admin.js — administration simple pour envoyer des messages vers Supabase
-// Remplace SUPABASE_URL and SUPABASE_ANON_KEY with the values you provided.
+// Keep SUPABASE_URL and SUPABASE_ANON_KEY unchanged.
 
 const SUPABASE_URL = 'https://tlsxaonegizlqytujgfo.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable__35QXHG--q-PJlGKHvdleg_tune7NLD';
 
 // Initialize Supabase client (UMD global from CDN)
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Local storage key for author
+const SAVED_AUTHOR_KEY = 'familyAuthor';
 
 // UI refs
 const emailEl = document.getElementById('email');
@@ -26,8 +29,14 @@ const sendResult = document.getElementById('send-result');
 const activeList = document.getElementById('active-list');
 const logoutBtn = document.getElementById('logout');
 
+// Prefill author from localStorage if present
+try{
+  const savedAuthor = localStorage.getItem(SAVED_AUTHOR_KEY);
+  if(savedAuthor && authorEl) authorEl.value = savedAuthor;
+}catch(e){console.warn('localStorage unavailable', e)}
+
 async function initAuth(){
-  // handle existing session
+  // handle existing session (ensures persistence across reloads/devices where session stored)
   try{
     const { data } = await supabaseClient.auth.getSession();
     const session = data?.session;
@@ -36,7 +45,7 @@ async function initAuth(){
     console.error('Auth init error', e);
   }
 
-  // listen to auth changes
+  // listen to auth changes so UI updates immediately after magic-link complete
   supabaseClient.auth.onAuthStateChange((event, session) => {
     updateAuthUI(session?.user ?? null);
   });
@@ -44,18 +53,31 @@ async function initAuth(){
 
 function updateAuthUI(user){
   if(user){
-    authStatus.textContent = 'Connecté';
+    // show connected state with email
+    authStatus.textContent = 'Connecté : ' + (user.email || '');
     authForms.style.display = 'none';
     signoutDiv.style.display = 'block';
     composeCard.style.display = 'block';
     userEmailSpan.textContent = user.email;
-    authorEl.value = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : (user.email || '');
+    // if saved author is present locally, keep it; else prefill with user email name
+    try{
+      const savedAuthor = localStorage.getItem(SAVED_AUTHOR_KEY);
+      if(savedAuthor && authorEl) authorEl.value = savedAuthor;
+      else if(authorEl && (!authorEl.value || authorEl.value.trim()==='')){
+        const name = (user.email || '').split('@')[0];
+        if(name) authorEl.value = name.charAt(0).toUpperCase() + name.slice(1);
+      }
+    }catch(e){/* ignore */}
     loadActiveMessages();
   } else {
     authStatus.textContent = 'Non connecté';
     authForms.style.display = 'block';
     signoutDiv.style.display = 'none';
     composeCard.style.display = 'none';
+    try{
+      const savedAuthor = localStorage.getItem(SAVED_AUTHOR_KEY);
+      if(savedAuthor && authorEl) authorEl.value = savedAuthor;
+    }catch(e){/* ignore */}
   }
 }
 
@@ -71,39 +93,22 @@ sendLinkBtn.addEventListener('click', async () => {
   sendLinkBtn.disabled = true;
   if(authResult) authResult.textContent = 'Envoi du lien...';
 
-   try {
-  const { data, error } = await supabaseClient.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: 'https://albandurand42-cmd.github.io/op-rateur/admin.html'
-    }
-  });
-
-  sendLinkBtn.disabled = false;
-
-  if (error) {
-    if(authResult) authResult.textContent = 'Erreur : ' + (error.message || String(error));
-    return;
-  }
-
-  if(authResult) authResult.textContent = 'Lien de connexion envoyé par e-mail ✓';
-
-} catch (err) {
-  console.error('sendLink error', err);
-  sendLinkBtn.disabled = false;
-  if(authResult) authResult.textContent = 'Erreur réseau — réessaie.';
-}
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: 'https://albandurand42-cmd.github.io/op-rateur/admin.html'
+      }
+    });
+    sendLinkBtn.disabled = false;
 
     if (error) {
-      // show clear Supabase error
       if(authResult) authResult.textContent = 'Erreur : ' + (error.message || String(error));
       return;
     }
 
-    // success: show clear confirmation
     if(authResult) authResult.textContent = 'Lien de connexion envoyé par e‑mail ✓';
   } catch (err) {
-    // network / unexpected error
     console.error('sendLink error', err);
     sendLinkBtn.disabled = false;
     if(authResult) authResult.textContent = 'Erreur réseau — réessaie.';
@@ -143,8 +148,10 @@ sendBtn.addEventListener('click', async ()=>{
   if(error){
     sendResult.textContent = 'Erreur envoi : ' + error.message;
   } else {
+    // keep session, clear only message field, keep author
     sendResult.textContent = 'Message envoyé ✓';
     messageEl.value = '';
+    try{ localStorage.setItem(SAVED_AUTHOR_KEY, author); }catch(e){/* ignore */}
     loadActiveMessages();
   }
 });
