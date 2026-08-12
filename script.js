@@ -39,7 +39,7 @@ const OPEN_METEO = {
   longitude: 3.83,    // Saint-Romain-d’Urfé (approx.)
   timezone: 'Europe/Paris', // utiliser le fuseau horaire fourni
   // fréquence de mise à jour en millisecondes (ex : 10 minutes)
-  refreshInterval: 10 * 60 * 1000
+  refreshInterval: 1 * 60 * 1000
 };
 
 // ----- Utils pour date / heure -----
