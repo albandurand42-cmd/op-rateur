@@ -359,5 +359,47 @@ if(window._fullReloadInterval) clearInterval(window._fullReloadInterval);
 window._fullReloadInterval = setInterval(() => {
   window.location.reload();
 }, 30 * 60 * 1000);
+// Supabase placeholders (index.html)
+const SUPABASE_URL = 'A_CONFIGURER';
+const SUPABASE_ANON_KEY = 'A_CONFIGURER';
 
+// Fetch latest active message and display in existing family message block
+async function fetchLatestFamilyMessage(){
+  // if not configured, do nothing (keep existing behavior)
+  if(!SUPABASE_URL || SUPABASE_URL === 'A_CONFIGURER' || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'A_CONFIGURER') {
+    return;
+  }
+  try{
+    const url = `${SUPABASE_URL}/rest/v1/messages?select=message,author,created_at&active=eq.true&order=created_at.desc&limit=1&t=${Date.now()}`;
+    const res = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Accept': 'application/json'
+      },
+      cache: 'no-store'
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if(Array.isArray(data) && data.length > 0){
+      const m = data[0];
+      const textEl = document.getElementById('family-message-text');
+      const srcEl = document.getElementById('family-message-source');
+      if(textEl) textEl.textContent = (m.message.startsWith('❤️') ? m.message : '❤️ ' + m.message);
+      if(srcEl) srcEl.textContent = '— ' + (m.author || '');
+    }
+  }catch(e){
+    console.error('Fetch family message failed:', e);
+    // keep current display (do not overwrite with invalid data)
+  }
+}
+
+// initial + poll + wake hooks
+fetchLatestFamilyMessage();
+if(window._familyMessagePoll) clearInterval(window._familyMessagePoll);
+window._familyMessagePoll = setInterval(fetchLatestFamilyMessage, 60 * 1000);
+window.addEventListener('focus', fetchLatestFamilyMessage);
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden) fetchLatestFamilyMessage();
+});
 // ----- End of script.js -----
