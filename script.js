@@ -120,3 +120,99 @@ startSlideshow();
 // ----- Petite note pour développeur débutant -----
 // Pour remplacer les images : déposer des fichiers dans le dossier images/ et
 // modifier la constante IMAGES ci-dessus pour changer la légende, l'auteur, ou la durée.
+
+// ---- Horloges multi-fuseaux (facile à configurer) ----
+// Modifier la liste TIMEZONES pour ajouter / retirer des fuseaux.
+// Utiliser des noms IANA valides (ex: "Europe/Paris", "America/New_York", "Asia/Tokyo").
+const TIMEZONES = [
+  { label: 'Paris (Mamie)', tz: 'Europe/Paris' },
+  { label: 'UTC', tz: 'UTC' },
+  { label: 'New York (Alban)', tz: 'America/New_York' },
+  { label: 'São Paulo (Famille)', tz: 'America/Sao_Paulo' },
+  { label: 'Tokyo', tz: 'Asia/Tokyo' }
+];
+
+// Crée l'interface HTML (une fois) puis met à jour chaque seconde
+function initTimezones() {
+  const container = document.getElementById('tz-clocks');
+  if (!container) return; // si pas présent, on ne fait rien
+
+  // créer les éléments
+  container.innerHTML = '';
+  TIMEZONES.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'tz-item';
+    row.id = 'tz-' + i;
+
+    const left = document.createElement('div');
+    left.style.display = 'flex';
+    left.style.flexDirection = 'column';
+
+    const label = document.createElement('div');
+    label.className = 'tz-label';
+    label.textContent = item.label;
+
+    const sub = document.createElement('div');
+    sub.className = 'tz-sub';
+    sub.textContent = item.tz; // affiche le nom du fuseau (utile pour debug/modif)
+    left.appendChild(label);
+    left.appendChild(sub);
+
+    const time = document.createElement('div');
+    time.className = 'tz-time';
+    time.textContent = '00:00:00';
+
+    row.appendChild(left);
+    row.appendChild(time);
+    container.appendChild(row);
+  });
+
+  // lancer la mise à jour chaque seconde
+  updateTimezones();
+  setInterval(updateTimezones, 1000);
+}
+
+function formatTimeInZone(zone) {
+  const now = new Date();
+  try {
+    // Intl.DateTimeFormat avec options : heures:minutes:secondes, 24h
+    return new Intl.DateTimeFormat('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      timeZone: zone
+    }).format(now);
+  } catch (e) {
+    // fallback si le fuseau est invalide ou pas supporté
+    return now.toLocaleTimeString('fr-FR');
+  }
+}
+
+function formatDayInZone(zone) {
+  const now = new Date();
+  try {
+    return new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', timeZone: zone }).format(now);
+  } catch (e) {
+    return '';
+  }
+}
+
+function updateTimezones() {
+  TIMEZONES.forEach((item, i) => {
+    const row = document.getElementById('tz-' + i);
+    if (!row) return;
+    const timeEl = row.querySelector('.tz-time');
+    timeEl.textContent = formatTimeInZone(item.tz);
+
+    // optionnel : afficher la date/jour sur la même ligne (petite sous-phrase)
+    const sub = row.querySelector('.tz-sub');
+    if (sub) {
+      sub.textContent = item.tz + ' • ' + formatDayInZone(item.tz);
+    }
+  });
+}
+
+// initialisation (appeler après le chargement du DOM)
+// Si ton script.js est déjà exécuté en bas de page (comme maintenant), on peut appeler directement :
+initTimezones();

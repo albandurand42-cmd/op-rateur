@@ -56,3 +56,16 @@ button{display:none}
 
 /* Ensure high contrast for images that may be bright */
 img{background:#111;border:4px solid rgba(0,0,0,0.25)}
+
+/* ---- Horloges multi-fuseaux ---- */
+.tz-clocks h2 { font-size:2vw; margin:0 0 8px 0; color:var(--accent) }
+.tz-list { display:flex; flex-direction:column; gap:8px }
+.tz-item { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.03) }
+.tz-label { font-size:1.8vw; font-weight:600 }
+.tz-time { font-size:2.2vw; font-weight:700; color:var(--card) }
+.tz-sub { font-size:1.4vw; color:var(--muted); margin-left:8px }
+@media (max-width:900px){
+  .tz-label { font-size:2.4vw }
+  .tz-time { font-size:3.0vw }
+  .tz-sub { font-size:1.8vw }
+}
