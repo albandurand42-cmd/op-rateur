@@ -167,7 +167,7 @@ setInterval(fetchWeather, OPEN_METEO.refreshInterval);
 
 // ----- Planning: connexion au Web App Google Apps Script fourni -----
 // Web App URL provided by the user (corrected)
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyKlwih9V9fVWsKa-jQlhgXQXSprEBbMaNBrs_K6Bv57CEXP9wjcA87Y3ezP31qkMo3Bg/exec';
+const WEBAPP_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnSmE21g_d6Lcubx4UGl8AJzKWv-XZoFqzpAio2fjH45uqN3nDOGYaTE7a8o59gJCtDi0odaIoko8cN6kLDBvG4fBxeC4C7UjhZ9dTCgF16lBL6I1t-19r-_B3SYnRDUMM3vWJcjJm4HYSdcVyHRS4fNpLDcL9g06zqx-JfTHaiyeaKjWZ3CvimefQoaLenQRgyYMFTcXJWxp0DcJmv456rcImDuAsHzikN4r1Gs0aXdreMYWJrx1TGvbHs7e1xyU4InTEdIOihy35RhWcsOPFGRt6sb7A&lib=M70QO8ab0Ri7XQqOqZPdPNxbNGQduxHHC';
 
 // cache des dernières données affichées : en cas d'erreur, on conserve l'affichage
 let cachedToday = null;
