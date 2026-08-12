@@ -17,14 +17,6 @@
     <section class="content">
       <aside class="left">
 
-        <!-- Zone : horloges multi-fuseaux -->
-        <div class="tz-clocks card" aria-live="polite" id="tz-container">
-          <h2>Heures</h2>
-          <div id="tz-clocks" class="tz-list">
-            <!-- éléments ajoutés par script.js -->
-          </div>
-        </div>
-
         <div class="weather card" aria-live="polite">
           <div id="weather-emoji" class="weather-emoji">☀️</div>
           <div class="weather-main">
@@ -61,7 +53,8 @@
         </div>
 
         <div class="message card" id="family-message">
-          <div class="message-text">Coucou Mamie, on pense à toi ❤️</div>
+          <div class="message-text" id="family-message-text">Coucou Mamie, on pense à toi ❤️</div>
+          <div class="message-source" id="family-message-source">Envoyé par : La famille</div>
         </div>
       </section>
     </section>
