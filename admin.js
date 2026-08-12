@@ -14,6 +14,7 @@ const authStatus = document.getElementById('auth-status');
 const authForms = document.getElementById('auth-forms');
 const signoutDiv = document.getElementById('signout');
 const userEmailSpan = document.getElementById('user-email');
+const authResult = document.getElementById('auth-result');
 
 const composeCard = document.getElementById('compose-card');
 const authorEl = document.getElementById('author');
@@ -58,15 +59,35 @@ function updateAuthUI(user){
   }
 }
 
-sendLinkBtn.addEventListener('click', async ()=>{
+// auth feedback handler — uses authResult (visible in auth area)
+sendLinkBtn.addEventListener('click', async () => {
   const email = emailEl.value.trim();
-  if(!email) return alert('Renseigne une adresse e‑mail.');
-  sendResult.textContent = 'Envoi du lien...';
-  const { error } = await supabaseClient.auth.signInWithOtp({ email });
-  if(error){
-    sendResult.textContent = 'Erreur envoi lien : ' + error.message;
-  } else {
-    sendResult.textContent = 'Lien envoyé — vérifie ta boîte e‑mail.';
+  if (!email) {
+    if(authResult) authResult.textContent = 'Renseigne une adresse e‑mail.';
+    return;
+  }
+
+  // disable button to avoid double sends and show immediate feedback
+  sendLinkBtn.disabled = true;
+  if(authResult) authResult.textContent = 'Envoi du lien...';
+
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithOtp({ email });
+    sendLinkBtn.disabled = false;
+
+    if (error) {
+      // show clear Supabase error
+      if(authResult) authResult.textContent = 'Erreur : ' + (error.message || String(error));
+      return;
+    }
+
+    // success: show clear confirmation
+    if(authResult) authResult.textContent = 'Lien de connexion envoyé par e‑mail ✓';
+  } catch (err) {
+    // network / unexpected error
+    console.error('sendLink error', err);
+    sendLinkBtn.disabled = false;
+    if(authResult) authResult.textContent = 'Erreur réseau — réessaie.';
   }
 });
 
@@ -167,4 +188,3 @@ function escapeHtml(unsafe){
 // init
 initAuth();
 loadActiveMessages();
-
