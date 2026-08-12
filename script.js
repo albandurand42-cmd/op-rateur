@@ -205,9 +205,14 @@ function renderWeatherFallback(){
 }
 
 // Lancement initial et planification des mises à jour
-fetchWeather();
-setInterval(fetchWeather, OPEN_METEO.refreshInterval);
+console.log("Interval météo :", OPEN_METEO.refreshInterval);
 
+fetchWeather();
+
+setInterval(() => {
+    console.log("Actualisation météo");
+    fetchWeather();
+}, OPEN_METEO.refreshInterval);
 // ----- Petite note pour développeur débutant -----
 // - Pour changer la localisation de la météo, modifier OPEN_METEO.latitude et OPEN_METEO.longitude
 //   dans le fichier script.js (ex: latitude: 48.8566, longitude: 2.3522).
