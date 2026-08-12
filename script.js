@@ -1,6 +1,13 @@
 // script.js — Tableau de bord prototype
-// Modifications : display event descriptions and poll the Web App every 60s (cache-busting)
-// The rest of the dashboard (layout, weather, photos, message, date/time) is unchanged.
+// Corrections demandées :
+// - utiliser APPS_SCRIPT_URL constant (never replace it)
+// - single fetchCalendarEvents() function that fetches today/upcoming
+// - cache-busting with ?t=Date.now(), fetch(..., {cache:'no-store'})
+// - poll every 60s, plus focus/visibility listeners to wake the tablet
+// - reload page every 30 minutes as safety
+// - display event.description for today and upcoming
+// - do NOT re-render MOCK data after a successful real fetch
+// - keep the rest of the dashboard unchanged (weather, photos, date/time, message, layout)
 
 // ----- Images / diaporama (unchanged) -----
 const IMAGES = [
@@ -9,7 +16,7 @@ const IMAGES = [
   { src: 'images/photo3.svg', caption: 'Dimanche ensoleillé', author: 'Marc', date: '2026-04-05', duration: 7000 }
 ];
 
-// ----- Données simulées (fallback si nécessaire) -----
+// ----- Données simulées (fallback si nécessaire, uniquement si AUCUNE donnée réelles n'a jamais été récupérée) -----
 const MOCK_EVENTS = [
   { time: '10:30', text: 'Coiffeuse' },
   { time: '15:00', text: 'Activité à la MARPA' },
@@ -34,7 +41,7 @@ const OPEN_METEO = {
   refreshInterval: 10 * 60 * 1000
 };
 
-// ----- Utils date/heure -----
+// ----- Utils date/heure (unchanged) -----
 function localizeDay(date){
   const days = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
   return days[date.getDay()];
@@ -45,7 +52,7 @@ function formatFullDate(date){
 }
 function twoDigits(n){return n<10? '0'+n : n}
 
-// ----- Affichage date / heure -----
+// ----- Affichage date / heure (unchanged) -----
 function updateDateTime(){
   const now = new Date();
   document.getElementById('day').textContent = localizeDay(now).toUpperCase();
@@ -56,7 +63,7 @@ function updateDateTime(){
 updateDateTime();
 setInterval(updateDateTime, 1000);
 
-// ----- Upcoming (initially simulated) -----
+// ----- Upcoming (initially simulated) (kept minimal until first real fetch) -----
 function renderUpcoming(list){
   const ul = document.getElementById('upcoming');
   ul.innerHTML = '';
@@ -166,14 +173,16 @@ fetchWeather();
 setInterval(fetchWeather, OPEN_METEO.refreshInterval);
 
 // ----- Planning: connexion au Web App Google Apps Script fourni -----
-// Web App URL provided by the user (corrected)
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyQtR3ZhgrKGzcCOdBuLy-TzhMFQwTlDbfN8MaaIDQYbIewbNcpW183iude96_jPP3cCA/exec';
+// IMPORTANT: APPS_SCRIPT_URL MUST NOT BE CHANGED - use exactly this value
+const APPS_SCRIPT_URL =
+  'https://script.google.com/macros/s/AKfycbxgSA42NHcJUTwB4EkUDW5833mRj9JuPpEONJH6I9WLQszhZRNtkRCXe7XQF1wq9IUQgg/exec';
 
 // cache des dernières données affichées : en cas d'erreur, on conserve l'affichage
 let cachedToday = null;
 let cachedUpcoming = null;
+let realDataLoaded = false; // becomes true after a successful fetch from Apps Script
 
-// utilitaire : format heure HH:MM en utilisant le fuseau local (ou Europe/Paris)
+// utilitaire : format heure HH:MM en utilisant le fuseau local (or Europe/Paris)
 const DEVICE_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris';
 function formatTimeLocalized(iso){
   try{
@@ -188,28 +197,22 @@ function formatTimeLocalized(iso){
 function formatUpcomingLabel(iso){
   const d = new Date(iso);
   const today = new Date();
-  // normalize times to local midnight for comparison
   const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const oneDay = 24*60*60*1000;
   const diffDays = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - midnight)/oneDay);
-
   const weekdays = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
   const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-
   if(diffDays === 1) return 'Demain';
   if(diffDays > 1 && diffDays <= 6){
-    // weekday capitalized
     const name = weekdays[d.getDay()];
     return name.charAt(0).toUpperCase() + name.slice(1);
   }
-  // otherwise show "12 septembre"
   return `${d.getDate()} ${months[d.getMonth()]}`;
 }
 
-// render today's events into #events (keeps design unchanged)
+// render today's events into #events
 function renderTodayEvents(items){
   const ul = document.getElementById('events');
-  // if we have previous display, keep it until we update
   ul.innerHTML = '';
   if(!items || items.length === 0){
     const li = document.createElement('li');
@@ -219,7 +222,6 @@ function renderTodayEvents(items){
   }
   items.forEach(ev => {
     const li = document.createElement('li');
-    // create title line
     const titleDiv = document.createElement('div');
     titleDiv.className = 'event-title';
     if(ev.allDay){
@@ -231,8 +233,8 @@ function renderTodayEvents(items){
       titleDiv.textContent = ev.title;
     }
     li.appendChild(titleDiv);
-    // description (optional)
-    if(ev.description && ev.description.trim().length>0){
+    // description (mandatory display if provided by Apps Script)
+    if(ev.description && String(ev.description).trim().length>0){
       const descDiv = document.createElement('div');
       descDiv.className = 'event-desc';
       descDiv.textContent = ev.description;
@@ -247,12 +249,9 @@ function renderUpcomingEvents(items, todayItems){
   const ul = document.getElementById('upcoming');
   ul.innerHTML = '';
   if(!items || items.length === 0){
-    // keep previous upcoming if exists, else use fallback
     if(cachedUpcoming && cachedUpcoming.length>0) items = cachedUpcoming;
     else items = MOCK_UPCOMING;
   }
-
-  // build set of today's starts (date string) to avoid duplicates (compare date part)
   const todayDates = new Set();
   if(todayItems){
     todayItems.forEach(t=>{
@@ -267,26 +266,20 @@ function renderUpcomingEvents(items, todayItems){
       }
     });
   }
-
-  // limit number of upcoming items to keep UI clean
   let count = 0;
   for(const ev of items){
-    // avoid duplicates: if ev.start date is in todayDates, skip
     if(ev.start){
       const d = new Date(ev.start);
       const key = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
       if(todayDates.has(key)) continue;
     }
     const li = document.createElement('li');
-    // label: day name or date
     const label = ev.start ? formatUpcomingLabel(ev.start) : formatUpcomingLabel(ev.start || new Date());
-    // title line
     const titleDiv = document.createElement('div');
     titleDiv.className = 'event-title';
     titleDiv.textContent = `${label} — ${ev.title}`;
     li.appendChild(titleDiv);
-    // description optional
-    if(ev.description && ev.description.trim().length>0){
+    if(ev.description && String(ev.description).trim().length>0){
       const descDiv = document.createElement('div');
       descDiv.className = 'event-desc';
       descDiv.textContent = ev.description;
@@ -294,22 +287,21 @@ function renderUpcomingEvents(items, todayItems){
     }
     ul.appendChild(li);
     count++;
-    if(count >= 6) break; // don't overload the UI
+    if(count >= 6) break;
   }
 }
 
-// fetch from the Web App and update both sections. Keep previous display on error.
-async function fetchEventsFromWebApp(){
+// SINGLE function that fetches calendar events from Apps Script
+async function fetchCalendarEvents(){
+  console.log('Actualisation Google Calendar :', new Date().toLocaleTimeString());
+  const requestUrl = `${APPS_SCRIPT_URL}?t=${Date.now()}`; // cache-busting param, do NOT change APPS_SCRIPT_URL
   try{
-    const url = WEBAPP_URL + '?t=' + Date.now(); // cache-busting timestamp
-    const res = await fetch(url, {cache: 'no-store'});
+    const res = await fetch(requestUrl, { method: 'GET', cache: 'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    // expected structure: { updatedAt, today: [...], upcoming: [...] }
+    console.log('Données Calendar reçues :', data);
     const today = Array.isArray(data.today) ? data.today.slice() : [];
     const upcoming = Array.isArray(data.upcoming) ? data.upcoming.slice() : [];
-
-    // Normalize items: ensure fields {title, description, start, end, allDay}
     const norm = arr => arr.map(it => ({
       title: it.title || '(sans titre)',
       description: it.description || '',
@@ -317,41 +309,55 @@ async function fetchEventsFromWebApp(){
       end: it.end || null,
       allDay: !!it.allDay
     }));
-
     const todayNorm = norm(today);
     const upcomingNorm = norm(upcoming);
-
-    // sort today by start time (all-day events get start at 00:00)
     todayNorm.sort((a,b)=>{
       const ta = a.start ? new Date(a.start).getTime() : 0;
       const tb = b.start ? new Date(b.start).getTime() : 0;
       return ta - tb;
     });
-
-    // update caches and UI
+    // mark that we have real data now
+    realDataLoaded = true;
     cachedToday = todayNorm;
     cachedUpcoming = upcomingNorm;
-
     renderTodayEvents(todayNorm);
     renderUpcomingEvents(upcomingNorm, todayNorm);
   }catch(e){
-    // fail silently for the user: keep previous displayed data if exists, else fallback to simulated
     console.error('Fetch events failed:', e);
+    // if we have previously loaded real data, keep it displayed
+    if(realDataLoaded && cachedToday){
+      renderTodayEvents(cachedToday);
+      renderUpcomingEvents(cachedUpcoming, cachedToday || []);
+      return;
+    }
+    // if no real data ever loaded, but we have cached (from previous attempts), keep it.
     if(cachedToday){
       renderTodayEvents(cachedToday);
-    } else {
-      renderTodayEvents(MOCK_EVENTS);
-    }
-    if(cachedUpcoming){
       renderUpcomingEvents(cachedUpcoming, cachedToday || []);
-    } else {
-      renderUpcoming(MOCK_UPCOMING);
+      return;
     }
+    // otherwise fallback to simulated data only once
+    renderTodayEvents(MOCK_EVENTS);
+    renderUpcoming(MOCK_UPCOMING);
   }
 }
 
-// initial load and periodic refresh every 60 seconds
-fetchEventsFromWebApp();
-setInterval(fetchEventsFromWebApp, 60 * 1000);
+// start polling: initial call + every 60 seconds
+fetchCalendarEvents();
+// ensure only one interval controls calendar polling
+if(window._calendarPollInterval) clearInterval(window._calendarPollInterval);
+window._calendarPollInterval = setInterval(fetchCalendarEvents, 60 * 1000);
 
-// ----- Fin script.js -----
+// wake-up hooks for Android / Chrome background throttling
+window.addEventListener('focus', fetchCalendarEvents);
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden) fetchCalendarEvents();
+});
+
+// safety: full reload every 30 minutes
+if(window._fullReloadInterval) clearInterval(window._fullReloadInterval);
+window._fullReloadInterval = setInterval(() => {
+  window.location.reload();
+}, 30 * 60 * 1000);
+
+// ----- End of script.js -----
