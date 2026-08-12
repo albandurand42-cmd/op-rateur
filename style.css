@@ -41,6 +41,10 @@ h1,h2,h3,h4,h5,h6,p,ul,ol,li,div,span,a,button{font-family:var(--font-stack);}
 /* Faire en sorte que les éléments de "Événements à venir" aient la même taille que le planning */
 .upcoming li{font-size:2.0vw;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
 
+/* Event title and description styling */
+.event-title{font-size:2.0vw;font-weight:600}
+.event-desc{font-size:1.6vw;color:var(--muted);margin-top:6px;line-height:1.2}
+
 .tomorrow{margin-top:8px;color:var(--muted);font-size:1.6vw}
 
 .photo{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
@@ -61,6 +65,8 @@ h1,h2,h3,h4,h5,h6,p,ul,ol,li,div,span,a,button{font-family:var(--font-stack);}
   .photo img{height:40vh}
   /* adapter les tailles des listes pour petits écrans */
   .schedule li, .upcoming li { font-size:2.4vw }
+  .event-title { font-size:2.4vw }
+  .event-desc { font-size:1.8vw }
 }
 
 /* Age-friendly focus: remove pointer cursors, no interactive controls visible */

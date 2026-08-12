@@ -1,8 +1,8 @@
 // script.js — Tableau de bord prototype
-// Modifications : connexion du bloc "Planning d'aujourd'hui" au Web App Google Apps Script fourni
-// Le reste du fichier (météo, diaporama, message familial, date/heure) est conservé.
+// Modifications : display event descriptions and poll the Web App every 60s (cache-busting)
+// The rest of the dashboard (layout, weather, photos, message, date/time) is unchanged.
 
-// ----- Images / diaporama (inchangés) -----
+// ----- Images / diaporama (unchanged) -----
 const IMAGES = [
   { src: 'images/photo1.svg', caption: 'Promenade au parc', author: 'Alban', date: '2026-08-01', duration: 8000 },
   { src: 'images/photo2.svg', caption: 'Anniversaire en famille', author: 'Sophie', date: '2025-11-12', duration: 9000 },
@@ -20,13 +20,13 @@ const MOCK_UPCOMING = [
   { when: '2026-09-12', text: 'Anniversaire : Tante Marie' }
 ];
 
-// ----- Message familial (inchangé) -----
+// ----- Message familial (unchanged) -----
 const FAMILY_MESSAGE = {
   text: 'Coucou Mamie, on pense à toi ❤️',
   source: 'Alban et toute la famille'
 };
 
-// ----- Open-Meteo config (inchangé) -----
+// ----- Open-Meteo config (unchanged) -----
 const OPEN_METEO = {
   latitude: 45.88,
   longitude: 3.83,
@@ -68,7 +68,7 @@ function renderUpcoming(list){
 }
 renderUpcoming(MOCK_UPCOMING);
 
-// ----- Diaporama simple (inchangé) -----
+// ----- Diaporama simple (unchanged) -----
 let slideIndex = 0;
 let slideTimer = null;
 function showSlide(index){
@@ -93,7 +93,7 @@ function startSlideshow(){
 }
 startSlideshow();
 
-// ----- Message familial (inchangé) -----
+// ----- Message familial (unchanged) -----
 function renderFamilyMessage(msg){
   const textEl = document.getElementById('family-message-text');
   const srcEl = document.getElementById('family-message-source');
@@ -102,7 +102,7 @@ function renderFamilyMessage(msg){
 }
 renderFamilyMessage(FAMILY_MESSAGE);
 
-// ----- Open-Meteo integration (inchangé) -----
+// ----- Open-Meteo integration (unchanged) -----
 function weatherCodeToEmoji(code){
   if(code === 0) return '☀️';
   if(code === 1 || code === 2) return '🌤️';
@@ -166,8 +166,8 @@ fetchWeather();
 setInterval(fetchWeather, OPEN_METEO.refreshInterval);
 
 // ----- Planning: connexion au Web App Google Apps Script fourni -----
-// Web App URL fourni par l'utilisateur (doit renvoyer le JSON décrit dans la demande)
-const WEBAPP_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnRawPZgO6kK1dY1gir75NTbms7Pbog5_jvb_P9kTD26Hm7BXlMve1qKD0Y0OGUp5QSvsUYqTQETi_qlFIVutl3jasDAu0BPj7M4mDMXGDipqoyvitEhaf9fJgQ1f2jtaEpfJ5TnyK8d8KRQpXh9v4msf87WNT1RX8njbbVLi1CJdE_IWiHBCOcPjsr3CwXJegoUarmRB4AyX7rFjZ2sLnOWkGpUqrAMvGU7UKsPhqTObLayMCdUiAqazu0uCdOTa3-UzLOUEx_mSTFL2Hi5J0No3xjgtQ&lib=M70QO8ab0Ri7XQqOqZPdPNxbNGQduxHHC';
+// Web App URL provided by the user (corrected)
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyKlwih9V9fVWsKa-jQlhgXQXSprEBbMaNBrs_K6Bv57CEXP9wjcA87Y3ezP31qkMo3Bg/exec';
 
 // cache des dernières données affichées : en cas d'erreur, on conserve l'affichage
 let cachedToday = null;
@@ -219,13 +219,24 @@ function renderTodayEvents(items){
   }
   items.forEach(ev => {
     const li = document.createElement('li');
+    // create title line
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'event-title';
     if(ev.allDay){
-      li.textContent = ev.title;
+      titleDiv.textContent = ev.title;
     } else if(ev.start){
       const time = formatTimeLocalized(ev.start);
-      li.textContent = `${time} — ${ev.title}`;
+      titleDiv.textContent = `${time} — ${ev.title}`;
     } else {
-      li.textContent = ev.title;
+      titleDiv.textContent = ev.title;
+    }
+    li.appendChild(titleDiv);
+    // description (optional)
+    if(ev.description && ev.description.trim().length>0){
+      const descDiv = document.createElement('div');
+      descDiv.className = 'event-desc';
+      descDiv.textContent = ev.description;
+      li.appendChild(descDiv);
     }
     ul.appendChild(li);
   });
@@ -269,7 +280,18 @@ function renderUpcomingEvents(items, todayItems){
     const li = document.createElement('li');
     // label: day name or date
     const label = ev.start ? formatUpcomingLabel(ev.start) : formatUpcomingLabel(ev.start || new Date());
-    li.textContent = `${label} — ${ev.title}`;
+    // title line
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'event-title';
+    titleDiv.textContent = `${label} — ${ev.title}`;
+    li.appendChild(titleDiv);
+    // description optional
+    if(ev.description && ev.description.trim().length>0){
+      const descDiv = document.createElement('div');
+      descDiv.className = 'event-desc';
+      descDiv.textContent = ev.description;
+      li.appendChild(descDiv);
+    }
     ul.appendChild(li);
     count++;
     if(count >= 6) break; // don't overload the UI
@@ -279,16 +301,18 @@ function renderUpcomingEvents(items, todayItems){
 // fetch from the Web App and update both sections. Keep previous display on error.
 async function fetchEventsFromWebApp(){
   try{
-    const res = await fetch(WEBAPP_URL, {cache: 'no-store'});
+    const url = WEBAPP_URL + '?t=' + Date.now(); // cache-busting timestamp
+    const res = await fetch(url, {cache: 'no-store'});
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     // expected structure: { updatedAt, today: [...], upcoming: [...] }
     const today = Array.isArray(data.today) ? data.today.slice() : [];
     const upcoming = Array.isArray(data.upcoming) ? data.upcoming.slice() : [];
 
-    // Normalize items: ensure fields {title, start, end, allDay}
+    // Normalize items: ensure fields {title, description, start, end, allDay}
     const norm = arr => arr.map(it => ({
       title: it.title || '(sans titre)',
+      description: it.description || '',
       start: it.start || null,
       end: it.end || null,
       allDay: !!it.allDay
@@ -326,8 +350,8 @@ async function fetchEventsFromWebApp(){
   }
 }
 
-// initial load and periodic refresh every 5 minutes
+// initial load and periodic refresh every 60 seconds
 fetchEventsFromWebApp();
-setInterval(fetchEventsFromWebApp, 5 * 60 * 1000);
+setInterval(fetchEventsFromWebApp, 60 * 1000);
 
 // ----- Fin script.js -----
