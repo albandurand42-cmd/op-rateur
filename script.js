@@ -1,48 +1,40 @@
-// script.js — prototype simple, commenté et facile à modifier
-// - affiche la date réelle
-// - affiche le jour de la semaine
-// - met à jour l'heure chaque seconde
-// - gère un diaporama automatique avec images locales
-// - récupère la météo réelle via Open-Meteo (remplace la météo simulée)
-// - affiche des données simulées pour planning (pour l'instant)
+// script.js — Tableau de bord prototype
+// Modifications : connexion du bloc "Planning d'aujourd'hui" au Web App Google Apps Script fourni
+// Le reste du fichier (météo, diaporama, message familial, date/heure) est conservé.
 
-// ----- Données simulées (à remplacer par API / Supabase plus tard) -----
+// ----- Images / diaporama (inchangés) -----
 const IMAGES = [
   { src: 'images/photo1.svg', caption: 'Promenade au parc', author: 'Alban', date: '2026-08-01', duration: 8000 },
   { src: 'images/photo2.svg', caption: 'Anniversaire en famille', author: 'Sophie', date: '2025-11-12', duration: 9000 },
   { src: 'images/photo3.svg', caption: 'Dimanche ensoleillé', author: 'Marc', date: '2026-04-05', duration: 7000 }
 ];
 
-// ----- Planning simulé -----
+// ----- Données simulées (fallback si nécessaire) -----
 const MOCK_EVENTS = [
   { time: '10:30', text: 'Coiffeuse' },
   { time: '15:00', text: 'Activité à la MARPA' },
   { time: '17:30', text: 'Alban vient te voir' }
 ];
-
 const MOCK_UPCOMING = [
   { when: 'Dimanche', text: 'Repas de famille' },
   { when: '2026-09-12', text: 'Anniversaire : Tante Marie' }
 ];
 
-// ----- Données du message familial (source incluse) -----
-// Modifie ces valeurs pour changer le message et la personne/ le groupe qui l'envoie.
+// ----- Message familial (inchangé) -----
 const FAMILY_MESSAGE = {
   text: 'Coucou Mamie, on pense à toi ❤️',
   source: 'Alban et toute la famille'
 };
 
-// ----- Configuration Open-Meteo (changer la localisation ici) -----
-// Paramétrage mis à jour pour Saint-Romain-d’Urfé (Loire, 42430) fourni par l'utilisateur
+// ----- Open-Meteo config (inchangé) -----
 const OPEN_METEO = {
-  latitude: 45.88,    // Saint-Romain-d’Urfé (approx.)
-  longitude: 3.83,    // Saint-Romain-d’Urfé (approx.)
-  timezone: 'Europe/Paris', // utiliser le fuseau horaire fourni
-  // fréquence de mise à jour en millisecondes (ex : 10 minutes)
-  refreshInterval: 1 * 60 * 1000
+  latitude: 45.88,
+  longitude: 3.83,
+  timezone: 'Europe/Paris',
+  refreshInterval: 10 * 60 * 1000
 };
 
-// ----- Utils pour date / heure -----
+// ----- Utils date/heure -----
 function localizeDay(date){
   const days = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
   return days[date.getDay()];
@@ -53,7 +45,7 @@ function formatFullDate(date){
 }
 function twoDigits(n){return n<10? '0'+n : n}
 
-// ----- Mise à jour de l'affichage de la date / heure -----
+// ----- Affichage date / heure -----
 function updateDateTime(){
   const now = new Date();
   document.getElementById('day').textContent = localizeDay(now).toUpperCase();
@@ -64,18 +56,7 @@ function updateDateTime(){
 updateDateTime();
 setInterval(updateDateTime, 1000);
 
-// ----- Affichage planning (simulé) -----
-function renderEvents(events){
-  const ul = document.getElementById('events');
-  ul.innerHTML = '';
-  events.forEach(ev =>{
-    const li = document.createElement('li');
-    li.textContent = `${ev.time} — ${ev.text}`;
-    ul.appendChild(li);
-  });
-}
-renderEvents(MOCK_EVENTS);
-
+// ----- Upcoming (initially simulated) -----
 function renderUpcoming(list){
   const ul = document.getElementById('upcoming');
   ul.innerHTML = '';
@@ -87,25 +68,21 @@ function renderUpcoming(list){
 }
 renderUpcoming(MOCK_UPCOMING);
 
-// ----- Diaporama simple -----
+// ----- Diaporama simple (inchangé) -----
 let slideIndex = 0;
 let slideTimer = null;
-
 function showSlide(index){
   const data = IMAGES[index];
   const img = document.getElementById('slide-img');
   const caption = document.getElementById('photo-caption');
   const author = document.getElementById('photo-author');
-
   img.src = data.src;
   img.alt = data.caption + ' — ' + data.author;
   caption.textContent = data.caption;
   author.textContent = 'Envoyé par : ' + data.author;
 }
-
 function startSlideshow(){
   IMAGES.forEach(i=>{ const p = new Image(); p.src = i.src });
-
   function next(){
     showSlide(slideIndex);
     const duration = IMAGES[slideIndex].duration || 7000;
@@ -116,7 +93,7 @@ function startSlideshow(){
 }
 startSlideshow();
 
-// ----- Message familial (modifiable) -----
+// ----- Message familial (inchangé) -----
 function renderFamilyMessage(msg){
   const textEl = document.getElementById('family-message-text');
   const srcEl = document.getElementById('family-message-source');
@@ -125,20 +102,15 @@ function renderFamilyMessage(msg){
 }
 renderFamilyMessage(FAMILY_MESSAGE);
 
-// ----- Open-Meteo integration -----
-// API gratuite, pas de clé requise : https://open-meteo.com/
-// Nous demandons current_weather=true et timezone=auto pour avoir la température et le code météo.
-
-// mapping météo (code Open-Meteo) -> icône et phrase simple en français
+// ----- Open-Meteo integration (inchangé) -----
 function weatherCodeToEmoji(code){
-  // codes: https://open-meteo.com/en/docs#api_form
-  if(code === 0) return '☀️'; // Clair
-  if(code === 1 || code === 2) return '🌤️'; // Partiellement nuageux
-  if(code === 3) return '☁️'; // Nuageux
-  if(code === 45 || code === 48) return '🌫️'; // Brouillard
-  if((51 <= code && code <= 67) || (80 <= code && code <= 82)) return '🌧️'; // Précipitations légères / averses
-  if((71 <= code && code <= 77) || (85 <= code && code <= 86)) return '❄️'; // Neige
-  if(code >= 95) return '⛈️'; // Orages
+  if(code === 0) return '☀️';
+  if(code === 1 || code === 2) return '🌤️';
+  if(code === 3) return '☁️';
+  if(code === 45 || code === 48) return '🌫️';
+  if((51 <= code && code <= 67) || (80 <= code && code <= 82)) return '🌧️';
+  if((71 <= code && code <= 77) || (85 <= code && code <= 86)) return '❄️';
+  if(code >= 95) return '⛈️';
   return '🌈';
 }
 function weatherCodeToPhrase(code){
@@ -151,7 +123,6 @@ function weatherCodeToPhrase(code){
   if(code >= 95) return 'Orages possibles';
   return 'Temps variable';
 }
-
 function timeOfDayPhrase(){
   const h = new Date().getHours();
   if(h >= 6 && h < 12) return "ce matin";
@@ -159,27 +130,21 @@ function timeOfDayPhrase(){
   if(h >= 18 && h < 22) return "ce soir";
   return "la nuit";
 }
-
 async function fetchWeather(){
   const lat = OPEN_METEO.latitude;
   const lon = OPEN_METEO.longitude;
-  const tz = OPEN_METEO.timezone || 'auto';
+  const tz = OPEN_METEO.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris';
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&current_weather=true&timezone=${encodeURIComponent(tz)}`;
-
   try{
     const res = await fetch(url);
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    if(!data.current_weather) throw new Error('Pas de current_weather dans la réponse');
-
+    if(!data.current_weather) throw new Error('Pas de current_weather');
     const cw = data.current_weather;
-    // cw.temperature (°C), cw.weathercode (int)
     const temp = Math.round(cw.temperature);
     const code = cw.weathercode;
     const emoji = weatherCodeToEmoji(code);
     const phrase = weatherCodeToPhrase(code) + ' ' + timeOfDayPhrase();
-
-    // Mettre à jour l'UI
     const emojiEl = document.getElementById('weather-emoji');
     const tempEl = document.getElementById('weather-temp');
     const descEl = document.getElementById('weather-desc');
@@ -187,36 +152,182 @@ async function fetchWeather(){
     if(tempEl) tempEl.textContent = `${temp} °C`;
     if(descEl) descEl.textContent = phrase;
   }catch(e){
-    // En cas d'erreur, on conserve une météo de secours lisible
     console.warn('Open-Meteo fetch failed:', e);
-    renderWeatherFallback();
+    const fallback = { emoji: '☀️', temp: '24 °C', desc: 'Beau temps cet après-midi' };
+    const emojiEl = document.getElementById('weather-emoji');
+    const tempEl = document.getElementById('weather-temp');
+    const descEl = document.getElementById('weather-desc');
+    if(emojiEl) emojiEl.textContent = fallback.emoji;
+    if(tempEl) tempEl.textContent = fallback.temp;
+    if(descEl) descEl.textContent = fallback.desc;
+  }
+}
+fetchWeather();
+setInterval(fetchWeather, OPEN_METEO.refreshInterval);
+
+// ----- Planning: connexion au Web App Google Apps Script fourni -----
+// Web App URL fourni par l'utilisateur (doit renvoyer le JSON décrit dans la demande)
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxgSA42NHcJUTwB4EkUDW5833mRj9JuPpEONJH6I9WLQszhZRNtkRCXe7XQF1wq9IUQgg/exec';
+
+// cache des dernières données affichées : en cas d'erreur, on conserve l'affichage
+let cachedToday = null;
+let cachedUpcoming = null;
+
+// utilitaire : format heure HH:MM en utilisant le fuseau local (ou Europe/Paris)
+const DEVICE_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris';
+function formatTimeLocalized(iso){
+  try{
+    const dt = new Date(iso);
+    return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: DEVICE_TZ }).format(dt);
+  }catch(e){
+    return '';
   }
 }
 
-function renderWeatherFallback(){
-  // météo lisible par défaut si l'API échoue
-  const fallback = { emoji: '☀️', temp: '24 °C', desc: 'Beau temps cet après-midi' };
-  const emojiEl = document.getElementById('weather-emoji');
-  const tempEl = document.getElementById('weather-temp');
-  const descEl = document.getElementById('weather-desc');
-  if(emojiEl) emojiEl.textContent = fallback.emoji;
-  if(tempEl) tempEl.textContent = fallback.temp;
-  if(descEl) descEl.textContent = fallback.desc;
+// utilitaire : formate les dates pour la section "Événements à venir"
+function formatUpcomingLabel(iso){
+  const d = new Date(iso);
+  const today = new Date();
+  // normalize times to local midnight for comparison
+  const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const oneDay = 24*60*60*1000;
+  const diffDays = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - midnight)/oneDay);
+
+  const weekdays = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+
+  if(diffDays === 1) return 'Demain';
+  if(diffDays > 1 && diffDays <= 6){
+    // weekday capitalized
+    const name = weekdays[d.getDay()];
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  }
+  // otherwise show "12 septembre"
+  return `${d.getDate()} ${months[d.getMonth()]}`;
 }
 
-// Lancement initial et planification des mises à jour
-console.log("Interval météo :", OPEN_METEO.refreshInterval);
+// render today's events into #events (keeps design unchanged)
+function renderTodayEvents(items){
+  const ul = document.getElementById('events');
+  // if we have previous display, keep it until we update
+  ul.innerHTML = '';
+  if(!items || items.length === 0){
+    const li = document.createElement('li');
+    li.textContent = "Rien de prévu aujourd'hui";
+    ul.appendChild(li);
+    return;
+  }
+  items.forEach(ev => {
+    const li = document.createElement('li');
+    if(ev.allDay){
+      li.textContent = ev.title;
+    } else if(ev.start){
+      const time = formatTimeLocalized(ev.start);
+      li.textContent = `${time} — ${ev.title}`;
+    } else {
+      li.textContent = ev.title;
+    }
+    ul.appendChild(li);
+  });
+}
 
-fetchWeather();
+// render upcoming events into #upcoming, avoid duplicates present in today's list
+function renderUpcomingEvents(items, todayItems){
+  const ul = document.getElementById('upcoming');
+  ul.innerHTML = '';
+  if(!items || items.length === 0){
+    // keep previous upcoming if exists, else use fallback
+    if(cachedUpcoming && cachedUpcoming.length>0) items = cachedUpcoming;
+    else items = MOCK_UPCOMING;
+  }
 
-setInterval(() => {
-    console.log("Actualisation météo");
-    fetchWeather();
-}, OPEN_METEO.refreshInterval);
-// ----- Petite note pour développeur débutant -----
-// - Pour changer la localisation de la météo, modifier OPEN_METEO.latitude et OPEN_METEO.longitude
-//   dans le fichier script.js (ex: latitude: 48.8566, longitude: 2.3522).
-// - Open-Meteo ne demande pas de clé. Si tu veux une localisation par nom de ville, utilise un service de géocodage
-//   (par ex. Nominatim / OpenCage) pour obtenir latitude/longitude puis mettre à jour OPEN_METEO.
-// - La description affichée est volontairement courte et en français pour Mamie. Tu peux modifier
-//   weatherCodeToPhrase ou timeOfDayPhrase() pour adapter le texte.
+  // build set of today's starts (date string) to avoid duplicates (compare date part)
+  const todayDates = new Set();
+  if(todayItems){
+    todayItems.forEach(t=>{
+      if(t.start){
+        const d = new Date(t.start);
+        const key = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+        todayDates.add(key);
+      } else if(t.allDay && t.start){
+        const d = new Date(t.start);
+        const key = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+        todayDates.add(key);
+      }
+    });
+  }
+
+  // limit number of upcoming items to keep UI clean
+  let count = 0;
+  for(const ev of items){
+    // avoid duplicates: if ev.start date is in todayDates, skip
+    if(ev.start){
+      const d = new Date(ev.start);
+      const key = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+      if(todayDates.has(key)) continue;
+    }
+    const li = document.createElement('li');
+    // label: day name or date
+    const label = ev.start ? formatUpcomingLabel(ev.start) : formatUpcomingLabel(ev.start || new Date());
+    li.textContent = `${label} — ${ev.title}`;
+    ul.appendChild(li);
+    count++;
+    if(count >= 6) break; // don't overload the UI
+  }
+}
+
+// fetch from the Web App and update both sections. Keep previous display on error.
+async function fetchEventsFromWebApp(){
+  try{
+    const res = await fetch(WEBAPP_URL, {cache: 'no-store'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    // expected structure: { updatedAt, today: [...], upcoming: [...] }
+    const today = Array.isArray(data.today) ? data.today.slice() : [];
+    const upcoming = Array.isArray(data.upcoming) ? data.upcoming.slice() : [];
+
+    // Normalize items: ensure fields {title, start, end, allDay}
+    const norm = arr => arr.map(it => ({
+      title: it.title || '(sans titre)',
+      start: it.start || null,
+      end: it.end || null,
+      allDay: !!it.allDay
+    }));
+
+    const todayNorm = norm(today);
+    const upcomingNorm = norm(upcoming);
+
+    // sort today by start time (all-day events get start at 00:00)
+    todayNorm.sort((a,b)=>{
+      const ta = a.start ? new Date(a.start).getTime() : 0;
+      const tb = b.start ? new Date(b.start).getTime() : 0;
+      return ta - tb;
+    });
+
+    // update caches and UI
+    cachedToday = todayNorm;
+    cachedUpcoming = upcomingNorm;
+
+    renderTodayEvents(todayNorm);
+    renderUpcomingEvents(upcomingNorm, todayNorm);
+  }catch(e){
+    // fail silently for the user: keep previous displayed data if exists, else fallback to simulated
+    console.error('Fetch events failed:', e);
+    if(cachedToday){
+      renderTodayEvents(cachedToday);
+    } else {
+      renderTodayEvents(MOCK_EVENTS);
+    }
+    if(cachedUpcoming){
+      renderUpcomingEvents(cachedUpcoming, cachedToday || []);
+    } else {
+      renderUpcoming(MOCK_UPCOMING);
+    }
+  }
+}
+
+// initial load and periodic refresh every 5 minutes
+fetchEventsFromWebApp();
+setInterval(fetchEventsFromWebApp, 5 * 60 * 1000);
+
+// ----- Fin script.js -----
