@@ -1,5 +1,6 @@
 /* style.css — très simple et pensé pour une tablette en paysage (Samsung Galaxy Tab A7)
    Priorités : très gros caractères, contraste élevé, interface épurée, lisibilité
+   Objectif de cette version : police uniforme pour tout le texte.
 */
 
 :root{
@@ -7,10 +8,14 @@
   --card: #fff;  /* texte sur cartes */
   --accent: #ff9f1c; /* couleur chaude */
   --muted: #d0d7de;
+  --font-stack: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; /* police uniforme */
 }
 
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:var(--card)}
+html,body{height:100%;margin:0;font-family:var(--font-stack);background:var(--bg); color:var(--card)}
+
+/* Forcer l'héritage de la police sur tous les éléments textuels pour garantir l'uniformité */
+h1,h2,h3,h4,h5,h6,p,ul,ol,li,div,span,a,button{font-family:var(--font-stack);}
 
 #dashboard{display:flex;flex-direction:column;height:100vh;padding:18px}
 
@@ -30,7 +35,7 @@ html,body{height:100%;margin:0;font-family: -apple-system, BlinkMacSystemFont, "
 .weather-temp{font-size:2.6vw;font-weight:700}
 .weather-desc{color:var(--muted);font-size:1.6vw}
 
-.schedule h2,.upcoming h2{font-size:2vw;margin:0 0 8px 0;color:var(--accent)}
+.schedule h2,.upcoming h2{font-size:2vw;margin:0 0 8px 0;color:var(--accent);font-weight:700}
 .schedule ul, .upcoming ul{list-style:none;padding:0;margin:0}
 .schedule li{font-size:2.0vw;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
 /* Faire en sorte que les éléments de "Événements à venir" aient la même taille que le planning */
