@@ -1,0 +1,170 @@
+// admin.js — administration simple pour envoyer des messages vers Supabase
+// Remplace SUPABASE_URL and SUPABASE_ANON_KEY with the values you provided.
+
+const SUPABASE_URL = 'https://tlsxaonegizlqytujgfo.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable__35QXHG--q-PJlGKHvdleg_tune7NLD';
+
+// Initialize Supabase client (UMD global from CDN)
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// UI refs
+const emailEl = document.getElementById('email');
+const sendLinkBtn = document.getElementById('send-link');
+const authStatus = document.getElementById('auth-status');
+const authForms = document.getElementById('auth-forms');
+const signoutDiv = document.getElementById('signout');
+const userEmailSpan = document.getElementById('user-email');
+
+const composeCard = document.getElementById('compose-card');
+const authorEl = document.getElementById('author');
+const messageEl = document.getElementById('message');
+const durationEl = document.getElementById('duration');
+const sendBtn = document.getElementById('send');
+const sendResult = document.getElementById('send-result');
+
+const activeList = document.getElementById('active-list');
+const logoutBtn = document.getElementById('logout');
+
+async function initAuth(){
+  // handle existing session
+  try{
+    const { data } = await supabaseClient.auth.getSession();
+    const session = data?.session;
+    updateAuthUI(session?.user ?? null);
+  }catch(e){
+    console.error('Auth init error', e);
+  }
+
+  // listen to auth changes
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    updateAuthUI(session?.user ?? null);
+  });
+}
+
+function updateAuthUI(user){
+  if(user){
+    authStatus.textContent = 'Connecté';
+    authForms.style.display = 'none';
+    signoutDiv.style.display = 'block';
+    composeCard.style.display = 'block';
+    userEmailSpan.textContent = user.email;
+    authorEl.value = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : (user.email || '');
+    loadActiveMessages();
+  } else {
+    authStatus.textContent = 'Non connecté';
+    authForms.style.display = 'block';
+    signoutDiv.style.display = 'none';
+    composeCard.style.display = 'none';
+  }
+}
+
+sendLinkBtn.addEventListener('click', async ()=>{
+  const email = emailEl.value.trim();
+  if(!email) return alert('Renseigne une adresse e‑mail.');
+  sendResult.textContent = 'Envoi du lien...';
+  const { error } = await supabaseClient.auth.signInWithOtp({ email });
+  if(error){
+    sendResult.textContent = 'Erreur envoi lien : ' + error.message;
+  } else {
+    sendResult.textContent = 'Lien envoyé — vérifie ta boîte e‑mail.';
+  }
+});
+
+logoutBtn.addEventListener('click', async ()=>{
+  await supabaseClient.auth.signOut();
+  updateAuthUI(null);
+});
+
+// send message
+sendBtn.addEventListener('click', async ()=>{
+  sendResult.textContent = '';
+  const author = authorEl.value.trim() || 'Famille';
+  const message = messageEl.value.trim();
+  if(!message) return alert('Écris un message.');
+  const duration = Number(durationEl.value); // days or 0 for permanent
+  let expires_at = null;
+  if(duration > 0){
+    const d = new Date();
+    d.setDate(d.getDate() + duration);
+    expires_at = d.toISOString();
+  }
+  // get session user
+  const { data } = await supabaseClient.auth.getSession();
+  const session = data?.session;
+  const user = session?.user;
+  const payload = {
+    message,
+    author,
+    expires_at,
+    active: true,
+    user_id: user?.id ?? null
+  };
+  const { data: insertData, error } = await supabaseClient.from('messages').insert([payload]).select().single();
+  if(error){
+    sendResult.textContent = 'Erreur envoi : ' + error.message;
+  } else {
+    sendResult.textContent = 'Message envoyé ✓';
+    messageEl.value = '';
+    loadActiveMessages();
+  }
+});
+
+// load active messages for admin view (with disable/delete)
+async function loadActiveMessages(){
+  activeList.textContent = 'Chargement...';
+  const { data, error } = await supabaseClient
+    .from('messages')
+    .select('*')
+    .eq('active', true)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if(error) {
+    activeList.textContent = 'Erreur chargement : ' + error.message;
+    return;
+  }
+  if(!data || data.length === 0){
+    activeList.textContent = 'Aucun message actif';
+    return;
+  }
+  activeList.innerHTML = '';
+  data.forEach(m => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'msg';
+    wrapper.innerHTML = `<div>${escapeHtml(m.message)}</div><div class="author">— ${escapeHtml(m.author || 'Anonyme')} • ${new Date(m.created_at).toLocaleString()}</div>`;
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const disableBtn = document.createElement('button');
+    disableBtn.textContent = 'Désactiver';
+    disableBtn.className = 'btn-muted';
+    disableBtn.addEventListener('click', async () => {
+      await supabaseClient.from('messages').update({ active: false }).eq('id', m.id);
+      loadActiveMessages();
+    });
+    const delBtn = document.createElement('button');
+    delBtn.textContent = 'Supprimer';
+    delBtn.className = 'btn-danger';
+    delBtn.addEventListener('click', async () => {
+      if(!confirm('Supprimer définitivement ce message ?')) return;
+      await supabaseClient.from('messages').delete().eq('id', m.id);
+      loadActiveMessages();
+    });
+    actions.appendChild(disableBtn);
+    actions.appendChild(delBtn);
+    wrapper.appendChild(actions);
+    activeList.appendChild(wrapper);
+  });
+}
+
+function escapeHtml(unsafe){
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// init
+initAuth();
+loadActiveMessages();
+
