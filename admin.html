@@ -25,23 +25,9 @@
 <body>
   <h1 style="margin-top:0;color:var(--accent)">Messages pour Mamie</h1>
 
-  <div class="card" id="auth-card">
-    <div id="auth-status" class="small">Non connecté</div>
-    <div id="auth-forms">
-      <label for="email">Adresse e‑mail (magic link)</label>
-      <input id="email" type="text" placeholder="ton@mail.com" />
-      <button id="send-link" type="button">Se connecter (magic link)</button>
-      <div class="small">Le lien de connexion est envoyé à l'adresse e‑mail. Utilise le même e‑mail pour tous les admins.</div>
-      <div id="auth-result" class="small" aria-live="polite"></div>
-    </div>
-    <div id="signout" style="display:none;">
-      <div class="small">Connecté en <span id="user-email"></span></div>
-      <button id="logout" class="btn-muted" type="button">Se déconnecter</button>
-    </div>
-  </div>
-
-  <div class="card" id="compose-card" style="display:none;">
-    <label for="author">Auteur</label>
+  <!-- Compose form: visible immediately, no auth required -->
+  <div class="card" id="compose-card">
+    <label for="author">Nom</label>
     <input id="author" type="text" placeholder="Alban" />
 
     <label for="message">Message</label>
