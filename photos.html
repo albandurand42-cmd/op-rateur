@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Envoyer une photo à Mamie</title>
+  <style>
+    body{font-family: system-ui, -apple-system, Roboto, Arial; padding:16px; background:#0f1720; color:var(--card,#fff)}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); padding:12px; border-radius:10px; margin-bottom:12px}
+    label{display:block;margin-top:8px;font-weight:700}
+    input[type="text"], textarea, select{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--card)}
+    input[type="file"]{margin-top:6px}
+    button{display:block;width:100%;padding:12px;margin-top:12px;border-radius:10px;background:var(--accent,#ff9f1c);border:none;color:#000;font-weight:700;font-size:16px}
+    .small{font-size:0.9rem;color:var(--muted,#d0d7de);margin-top:8px}
+    .preview{margin-top:8px}
+    .preview img{max-width:100%;border-radius:8px}
+    .error{color:#ff6b6b}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <main>
+    <h1 style="margin-top:0;color:var(--accent)">Envoyer une photo à Mamie</h1>
+
+    <div class="card">
+      <label for="author">Nom (obligatoire)</label>
+      <input id="author" type="text" placeholder="Alban" required />
+
+      <label for="photo">Photo (jpg/png/webp) — max 10 Mo</label>
+      <input id="photo" type="file" accept="image/jpeg,image/png,image/webp" />
+
+      <div class="preview" id="preview"></div>
+
+      <label for="caption">Légende (optionnel)</label>
+      <textarea id="caption" rows="2" placeholder="Petite balade au lac aujourd'hui ☀️"></textarea>
+
+      <button id="send">ENVOYER LA PHOTO</button>
+      <div id="status" class="small" aria-live="polite"></div>
+    </div>
+
+    <div class="card small">
+      <div>Les photos sont stockées publiquement dans Supabase Storage (bucket <code>family-photos</code>).</div>
+    </div>
+  </main>
+
+  <script type="module" src="photos.js"></script>
+</body>
+</html>
