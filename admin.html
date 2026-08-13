@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — Messages pour Mamie</title>
+  <style>
+    /* Simple mobile-friendly styling, keeps dark theme consistent */
+    body{font-family: system-ui, -apple-system, Roboto, Arial; padding:16px; background:#0f1720; color:var(--card, #fff)}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); padding:12px; border-radius:10px; margin-bottom:12px}
+    label{display:block;margin-top:8px;font-weight:700}
+    input[type="text"], textarea, select{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--card)}
+    button{display:block;width:100%;padding:12px;margin-top:12px;border-radius:10px;background:var(--accent, #ff9f1c);border:none;color:#000;font-weight:700;font-size:16px}
+    .small{font-size:0.9rem;color:var(--muted, #d0d7de);margin-top:8px}
+    .msg{padding:10px;border-radius:8px;margin-top:8px;background:rgba(255,255,255,0.02)}
+    .msg .author{font-size:0.9rem;color:var(--muted, #d0d7de)}
+    .actions{display:flex;gap:8px;margin-top:8px}
+    .actions button{flex:1;padding:8px;border-radius:8px;border:none}
+    .btn-muted{background:rgba(255,255,255,0.06);color:var(--card)}
+    .btn-danger{background:#ff4d4f;color:#fff}
+  </style>
+  <!-- Supabase JS (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <h1 style="margin-top:0;color:var(--accent)">Messages pour Mamie</h1>
+
+  <div class="card" id="auth-card">
+    <div id="auth-status" class="small">Non connecté</div>
+    <div id="auth-forms">
+      <label for="email">Adresse e‑mail (magic link)</label>
+      <input id="email" type="text" placeholder="ton@mail.com" />
+      <button id="send-link" type="button">Se connecter (magic link)</button>
+      <div class="small">Le lien de connexion est envoyé à l'adresse e‑mail. Utilise le même e‑mail pour tous les admins.</div>
+      <div id="auth-result" class="small" aria-live="polite"></div>
+    </div>
+    <div id="signout" style="display:none;">
+      <div class="small">Connecté en <span id="user-email"></span></div>
+      <button id="logout" class="btn-muted" type="button">Se déconnecter</button>
+    </div>
+  </div>
+
+  <div class="card" id="compose-card" style="display:none;">
+    <label for="author">Auteur</label>
+    <input id="author" type="text" placeholder="Alban" />
+
+    <label for="message">Message</label>
+    <textarea id="message" rows="3" placeholder="Bonne journée Mamie ❤️"></textarea>
+
+    <label for="duration">Durée d'affichage</label>
+    <select id="duration">
+      <option value="1">1 jour</option>
+      <option value="3">3 jours</option>
+      <option value="7" selected>7 jours</option>
+      <option value="0">Permanent</option>
+    </select>
+
+    <button id="send" type="button">ENVOYER À MAMIE</button>
+    <div id="send-result" class="small" aria-live="polite"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 8px 0;color:var(--accent)">Messages actifs</h2>
+    <div id="active-list" aria-live="polite" class="small">Chargement...</div>
+  </div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Tableau de bord — Mamie</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="dashboard">
+    <header class="top">
+      <div class="day" id="day">Lundi</div>
+      <div class="date" id="date">1 janvier 1970</div>
+      <div class="time" id="time">12:00</div>
+    </header>
+
+    <section class="content">
+      <aside class="left">
+
+        <div class="weather card" aria-live="polite">
+          <div id="weather-emoji" class="weather-emoji">☀️</div>
+          <div class="weather-main">
+            <div id="weather-temp" class="weather-temp">24 °C</div>
+            <div id="weather-desc" class="weather-desc">Beau temps cet après-midi</div>
+          </div>
+        </div>
+
+        <div class="schedule card">
+          <h2>Planning d'aujourd'hui</h2>
+          <ul id="events">
+            <!-- événements insérés par script.js -->
+          </ul>
+          <div id="tomorrow-events" class="tomorrow">
+            <!-- premiers événements de demain (optionnel) -->
+          </div>
+        </div>
+
+        <div class="upcoming card">
+          <h2>Événements à venir</h2>
+          <ul id="upcoming">
+            <!-- anniversaires / événements -->
+          </ul>
+        </div>
+      </aside>
+
+      <section class="right">
+        <div class="photo card">
+          <img id="slide-img" src="images/photo1.svg" alt="Photo de famille" />
+          <div class="photo-info">
+            <div id="photo-caption" class="caption">Mamie au jardin</div>
+            <div id="photo-author" class="author">Envoyé par : Alban</div>
+          </div>
+        </div>
+
+        <div class="message card" id="family-message">
+          <div class="message-text" id="family-message-text">Coucou Mamie, on pense à toi ❤️</div>
+          <div class="message-source" id="family-message-source">Envoyé par : La famille</div>
+        </div>
+      </section>
+    </section>
+
+    <footer class="footer">
+      <div class="small">Tableau de bord familial — affichage automatique</div>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+  <!-- Supabase JS SDK (UMD) required by supabase-family-message.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-family-message.js"></script>
+</body>
+</html>
