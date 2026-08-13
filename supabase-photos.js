@@ -19,12 +19,13 @@
   let rotateTimer = null;
   let refreshTimer = null;
 
-  // expose for debug
+  // debug exposure
   window._familyPhotos = photosList;
   window._familyPhotoIndex = currentIndex;
 
   function nowTime(){ return new Date().toLocaleTimeString(); }
 
+  // capture current local fallback (existing images) to restore if no supabase photos
   function captureFallback(){
     const img = document.getElementById('slide-img');
     const cap = document.getElementById('photo-caption');
@@ -35,7 +36,6 @@
       author: auth ? auth.textContent : ''
     };
   }
-
   const fallback = captureFallback();
 
   function renderCurrentPhoto(){
@@ -54,14 +54,12 @@
 
     if(currentIndex >= photosList.length) currentIndex = 0;
     const photo = photosList[currentIndex];
-    // set image src to publicUrl if available, else try to build one
+
     const src = (photo && photo.publicUrl) ? photo.publicUrl : (photo && photo.storage_path ? buildPublicUrl(photo.storage_path) : null);
     if(src){
       imgEl.src = src;
-      // if image fails to load, skip to next
       imgEl.onerror = function(){
         console.error('Image failed to load, skipping to next:', src);
-        // short delay to avoid tight loop
         setTimeout(() => rotatePhoto(), 250);
       };
     }
@@ -118,10 +116,9 @@
       });
 
       const currentPath = (photosList[currentIndex] && photosList[currentIndex].storage_path) ? photosList[currentIndex].storage_path : null;
-
       photosList = list;
 
-      // try to preserve currently displayed photo if it still exists
+      // preserve current if still present
       if(currentPath){
         const newIndex = photosList.findIndex(x => x.storage_path === currentPath);
         if(newIndex !== -1){
@@ -131,13 +128,11 @@
         }
       }
 
-      // otherwise start at 0 and render
       currentIndex = 0;
       renderCurrentPhoto();
 
     }catch(e){
       console.error('Fetch family photos failed:', e);
-      // don't clear existing photosList; just render current state
       renderCurrentPhoto();
     }
   }
@@ -155,16 +150,13 @@
 
   // boot
   if(typeof window !== 'undefined'){
-    // initial fetch and start timers
     fetchFamilyPhotos().then(() => {
       ensureTimers();
     });
 
-    // refresh on focus/visibility
     window.addEventListener('focus', fetchFamilyPhotos);
     document.addEventListener('visibilitychange', () => { if(!document.hidden) fetchFamilyPhotos(); });
 
-    // expose for debug
     window._familyPhotos = photosList;
     window._familyPhotoIndex = currentIndex;
     window.fetchFamilyPhotos = fetchFamilyPhotos;
