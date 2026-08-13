@@ -1,22 +1,24 @@
 (function(){
   // Supabase integration for index.html — fetch latest active family message
-  // Values provided by user
+  // Uses public anon key only (safe for frontend). Reuses same SUPABASE_URL/ANON as admin.js
   const SUPABASE_URL = 'https://tlsxaonegizlqytujgfo.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable__35QXHG--q-PJlGKHvdleg_tune7NLD';
 
-  // cache to avoid overwriting on error
   let cachedFamily = null;
 
-  const DEVICE_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris';
+  function nowTime(){
+    const d = new Date();
+    return d.toLocaleTimeString();
+  }
 
   async function fetchLatestFamilyMessage(){
-    // build REST URL to Supabase (REST endpoint)
+    console.log('Actualisation message familial :', nowTime());
     const params = new URLSearchParams({
-      select: 'message,author,created_at,expires_at',
+      select: 'id,message,author,created_at,expires_at',
       order: 'created_at.desc',
-      limit: '1'
+      limit: '10'
     });
-    const url = `${SUPABASE_URL}/rest/v1/messages?${params.toString()}&t=${Date.now()}`;
+    const url = `${SUPABASE_URL}/rest/v1/messages?${params.toString()}&active=eq.true&t=${Date.now()}`;
     try{
       const res = await fetch(url, {
         method: 'GET',
@@ -29,40 +31,46 @@
       });
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
+      console.log('Message Supabase reçu :', data);
       if(Array.isArray(data) && data.length>0){
-        const m = data[0];
-        // check expires_at
-        if(m.expires_at){
-          const exp = new Date(m.expires_at);
-          if(exp.getTime() <= Date.now()){
-            // expired, treat as no message
-            return;
+        const now = Date.now();
+        // find the first non-expired message
+        const valid = data.find(m => {
+          if(!m) return false;
+          if(m.expires_at){
+            const exp = new Date(m.expires_at).getTime();
+            return exp > now;
           }
+          return true; // no expires_at => permanent
+        });
+        if(valid){
+          // update DOM
+          const textEl = document.getElementById('family-message-text');
+          const srcEl = document.getElementById('family-message-source');
+          if(textEl) textEl.textContent = (String(valid.message).startsWith('❤️') ? valid.message : '❤️ ' + valid.message);
+          if(srcEl) srcEl.textContent = 'Envoyé par : ' + (valid.author || '');
+          cachedFamily = valid;
+          return;
         }
-        // update DOM
-        const textEl = document.getElementById('family-message-text');
-        const srcEl = document.getElementById('family-message-source');
-        if(textEl) textEl.textContent = (m.message.startsWith('❤️') ? m.message : '❤️ ' + m.message);
-        if(srcEl) srcEl.textContent = '— ' + (m.author || '');
-        cachedFamily = m;
       }
+      // no valid message found: keep cached or default (do nothing)
     }catch(e){
       console.error('Fetch family message failed:', e);
-      // keep cachedFamily if exists, else do nothing (keep default message)
+      // on error, keep cachedFamily displayed if any
       if(cachedFamily){
         const textEl = document.getElementById('family-message-text');
         const srcEl = document.getElementById('family-message-source');
-        if(textEl) textEl.textContent = (cachedFamily.message.startsWith('❤️') ? cachedFamily.message : '❤️ ' + cachedFamily.message);
-        if(srcEl) srcEl.textContent = '— ' + (cachedFamily.author || '');
+        if(textEl) textEl.textContent = (String(cachedFamily.message).startsWith('❤️') ? cachedFamily.message : '❤️ ' + cachedFamily.message);
+        if(srcEl) srcEl.textContent = 'Envoyé par : ' + (cachedFamily.author || '');
       }
     }
   }
 
-  // initial + poll + wake hooks
+  // initial + poll + wake hooks (30s)
   if(typeof window !== 'undefined'){
     try{ fetchLatestFamilyMessage(); }catch(e){console.warn(e)}
     if(window._familyMessagePoll) clearInterval(window._familyMessagePoll);
-    window._familyMessagePoll = setInterval(fetchLatestFamilyMessage, 60 * 1000);
+    window._familyMessagePoll = setInterval(fetchLatestFamilyMessage, 30 * 1000);
     window.addEventListener('focus', fetchLatestFamilyMessage);
     document.addEventListener('visibilitychange', () => { if(!document.hidden) fetchLatestFamilyMessage(); });
   }
