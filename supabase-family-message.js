@@ -1,14 +1,13 @@
 (function(){
-  // supabase-family-message.js — rotation of active family messages fetched from Supabase
-  // Uses the public anon key only (safe for frontend). Assumes supabase-js UMD is loaded on the page.
+  // supabase-family-message.js — fetch active messages from Supabase and rotate locally
+  // Uses public anon key only (safe for frontend). Assumes supabase-js UMD is loaded.
   const SUPABASE_URL = 'https://tlsxaonegizlqytujgfo.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable__35QXHG--q-PJlGKHvdleg_tune7NLD';
 
-  // Rotation / refresh timings
   const ROTATE_INTERVAL_MS = 15000; // 15s
   const REFRESH_INTERVAL_MS = 30000; // 30s
 
-  // state
+  // supabase client
   let supabaseClient = null;
   if(typeof supabase !== 'undefined' && supabase && supabase.createClient){
     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -16,64 +15,72 @@
     console.warn('supabase SDK not found — supabase-family-message requires the supabase-js UMD to be loaded before this script');
   }
 
-  let messagesList = []; // array of valid messages (most recent first)
+  // state
+  let messagesList = [];
   let currentIndex = 0;
   let rotateTimer = null;
   let refreshTimer = null;
-  let cachedDefault = {
-    text: null,
-    source: null
-  };
+
+  // expose for debug
+  window._familyMessages = messagesList;
+  window._familyCurrentIndex = currentIndex;
 
   function nowTime(){ return new Date().toLocaleTimeString(); }
 
-  function renderMessage(msg){
+  function renderCurrentMessage(){
     const textEl = document.getElementById('family-message-text');
     const srcEl = document.getElementById('family-message-source');
     if(!textEl || !srcEl) return;
-    if(!msg){
-      // restore default
-      if(cachedDefault.text !== null) textEl.textContent = cachedDefault.text;
-      if(cachedDefault.source !== null) srcEl.textContent = cachedDefault.source;
+
+    if(!messagesList || messagesList.length === 0){
+      // Nothing to show: keep existing DOM as default
+      console.log('Nombre de messages valides :', 0);
+      window._familyMessages = messagesList;
+      window._familyCurrentIndex = currentIndex;
       return;
     }
+
+    // clamp currentIndex
+    if(currentIndex >= messagesList.length) currentIndex = 0;
+    const msg = messagesList[currentIndex];
     const text = String(msg.message || '');
     textEl.textContent = (text.startsWith('❤️') ? text : '❤️ ' + text);
     srcEl.textContent = 'Envoyé par : ' + (msg.author || '');
+
+    // debug logs
+    console.log('Nombre de messages valides :', messagesList.length);
+    console.log('Index courant :', currentIndex);
+    console.log('Rotation message à :', nowTime());
+    console.log('Message affiché :', msg);
+
+    // update inspectable windows vars
+    window._familyMessages = messagesList;
+    window._familyCurrentIndex = currentIndex;
   }
 
-  function captureDefault(){
-    const textEl = document.getElementById('family-message-text');
-    const srcEl = document.getElementById('family-message-source');
-    cachedDefault.text = textEl ? textEl.textContent : '';
-    cachedDefault.source = srcEl ? srcEl.textContent : '';
+  function rotateMessage(){
+    if(messagesList.length <= 1) return; // nothing to rotate
+    currentIndex = (currentIndex + 1) % messagesList.length;
+    renderCurrentMessage();
   }
 
-  function startRotation(){
-    // clear existing
-    if(rotateTimer) clearInterval(rotateTimer);
-    // if 0 or 1 message, no rotation necessary but keep timer to check if list grows
-    rotateTimer = setInterval(() => {
-      if(messagesList.length <= 1) return; // nothing to rotate
-      currentIndex = (currentIndex + 1) % messagesList.length;
-      renderMessage(messagesList[currentIndex]);
-    }, ROTATE_INTERVAL_MS);
-    // show current immediately
-    if(messagesList.length > 0){
-      // ensure currentIndex is within bounds
-      if(currentIndex >= messagesList.length) currentIndex = 0;
-      renderMessage(messagesList[currentIndex]);
-    } else {
-      renderMessage(null);
-    }
+  function ensureRotateTimer(){
+    if(rotateTimer) return; // only one rotate interval
+    rotateTimer = setInterval(rotateMessage, ROTATE_INTERVAL_MS);
+    window._familyMessageRotate = rotateTimer;
+    // render immediately if messages exist
+    renderCurrentMessage();
+  }
+
+  function ensureRefreshTimer(){
+    if(refreshTimer) return; // only one refresh interval
+    refreshTimer = setInterval(fetchLatestFamilyMessage, REFRESH_INTERVAL_MS);
+    window._familyMessageRefresh = refreshTimer;
   }
 
   async function fetchLatestFamilyMessage(){
     console.log('Actualisation message familial :', nowTime());
-    if(!supabaseClient) {
-      console.warn('Supabase client not initialized — skipping fetchLatestFamilyMessage');
-      return;
-    }
+    if(!supabaseClient) return;
 
     try{
       const { data, error } = await supabaseClient
@@ -90,7 +97,6 @@
 
       console.log('Message Supabase reçu :', data);
 
-      // filter out expired messages and normalize
       const now = Date.now();
       const valid = (Array.isArray(data) ? data : []).filter(m => {
         if(!m) return false;
@@ -98,79 +104,62 @@
           const t = new Date(m.expires_at).getTime();
           return t > now;
         }
-        return true; // no expires_at => permanent
+        return true;
       });
 
-      // messages are already ordered by created_at desc from the query
-      // determine next messagesList while trying to avoid flicker
-      if(valid.length === 0){
-        // clear list
-        messagesList = [];
+      // preserve currently displayed message if still present
+      const currentId = (messagesList[currentIndex] && messagesList[currentIndex].id) ? messagesList[currentIndex].id : null;
+
+      messagesList = valid;
+
+      // update exposed list immediately
+      window._familyMessages = messagesList;
+
+      if(messagesList.length === 0){
         currentIndex = 0;
-        renderMessage(null);
+        renderCurrentMessage();
         return;
       }
 
-      // find id of currently displayed message so we can keep it if still present
-      const currentId = (messagesList[currentIndex] && messagesList[currentIndex].id) ? messagesList[currentIndex].id : null;
-
-      // update list
-      messagesList = valid;
-
-      // attempt to preserve currentIndex to the same message id if still present
       if(currentId){
         const newIndex = messagesList.findIndex(m => m.id === currentId);
         if(newIndex !== -1){
-          currentIndex = newIndex;
-          // keep displaying same message (avoid flicker)
-          renderMessage(messagesList[currentIndex]);
+          currentIndex = newIndex; // keep showing same message
+          renderCurrentMessage();
           return;
         }
       }
 
-      // if no previous message or it disappeared, keep displaying the first message but try to avoid abrupt change
+      // current message disappeared or none before: keep first message
       currentIndex = 0;
-      renderMessage(messagesList[currentIndex]);
+      renderCurrentMessage();
 
     }catch(e){
       console.error('Fetch family message failed:', e);
-      // do not clear messagesList, keep showing cached/default
-      if(messagesList.length > 0){
-        renderMessage(messagesList[currentIndex]);
-      } else {
-        renderMessage(null);
-      }
+      // keep existing messagesList and currentIndex
+      renderCurrentMessage();
     }
   }
 
-  // boot sequence
+  // boot
   if(typeof window !== 'undefined'){
-    // capture default text/source so we can restore when no messages
-    try{ captureDefault(); }catch(e){/* ignore */}
-
+    // start rotation timer (single instance)
+    ensureRotateTimer();
     // initial fetch
-    fetchLatestFamilyMessage();
+    fetchLatestFamilyMessage().then(() => {
+      // ensure refresh timer only after initial fetch attempt
+      ensureRefreshTimer();
+    });
 
-    // refresh timer (Supabase polling every 30s)
-    if(refreshTimer) clearInterval(refreshTimer);
-    refreshTimer = setInterval(fetchLatestFamilyMessage, REFRESH_INTERVAL_MS);
-    window._familyMessageRefresh = refreshTimer;
-
-    // rotation timer (15s)
-    if(rotateTimer) clearInterval(rotateTimer);
-    rotateTimer = setInterval(() => {
-      if(messagesList.length <= 1) return;
-      currentIndex = (currentIndex + 1) % messagesList.length;
-      renderMessage(messagesList[currentIndex]);
-    }, ROTATE_INTERVAL_MS);
-    window._familyMessageRotate = rotateTimer;
-
-    // focus/visibility hooks
+    // also refresh on focus/visibility
     window.addEventListener('focus', fetchLatestFamilyMessage);
     document.addEventListener('visibilitychange', () => { if(!document.hidden) fetchLatestFamilyMessage(); });
 
-    // expose function for manual testing
+    // expose for manual debug
     window.fetchLatestFamilyMessage = fetchLatestFamilyMessage;
+    // expose current state
+    window._familyMessages = messagesList;
+    window._familyCurrentIndex = currentIndex;
   }
 
 })();
